@@ -35,3 +35,86 @@ Le `Coordinator` est donc l'une des possibles options pour gérer le flux de nav
 Ce pattern présente pas mal de confusions au niveau de son implémentation. En effet, en recherchant sur Google et YouTube, il y a différentes implémentations de celui-ci, certaines sont simples, d'autres complexes à comprendre et à implémenter. Selon moi, ce design pattern donne beaucoup de fil à retordre pour l'apprendre, le comprendre et l'implémenter, étant donc l'un des patterns les plus complexes.
 
 Il y a de bonnes chances que l'implémentation qu'on apprend soit différente de celle appliquée sur un projet dans une entreprise, auquel cas on pourrait être déboussolé au début.
+
+### Important
+
+Toute utilisation de ce pattern doit utiliser `AppDelegate` ou `SceneDelegate` pour le flux de départ. Et également, si le `Storyboard` est utilisé, l'utilisation des `segue` est à proscrire.
+
+### Structure
+
+Pour l'implémentation de ce pattern, on va définir 2 protocoles, un pour le `Coordinator` et un autre pour celui qui sera le parent du `Coordinator` enfant. 2 protocoles sont définis car on souhaite respecter le 4ème principe du SOLID qui est la ségrégation d'interfaces où une classe implémentant un protocole qu'avec ce qu'il a besoin.
+
+La logique de navigation va donc se faire dans un `NavigationController` et les transitions peuvent se faire aussi bien avec `push` qu'avec `present` (si on n'a pas besoin de la barre de navigation, qu'on veut une transition modale).
+
+`childCoordinators` représente les sous-flux du `Coordinator` actuel, chaque `Coordinator` faisant office de parent aura comme mission de gérer les références entre les `Coordinator` parent et enfant.
+
+`start()` sera la fonction qui instanciera le `ViewController` et qui affichera l'écran de départ ou effectuera la transition d'un écran à un autre.
+
+```swift
+protocol Coordinator: AnyObject {
+    var childCoordinators: [Coordinator] { get set }
+    var navigationController: UINavigationController { get set }
+    
+    func start()
+}
+
+protocol ParentCoordinator: AnyObject {
+    func addChildCoordinator(childCoordinator: Coordinator)
+    func removeChildCoordinator(childCoordinator: Coordinator)
+}
+```
+
+Une fois les protocoles définis, on va créer le `Coordinator` principal, qu'on nommera `AppCoordinator` et qui implémentera les 2 protocoles.
+
+Ici, on injectera une dépendance d'un `UINavigationController` pour la racine de la navigation.
+
+Dans l'ex
+
+```swift
+// Le principal Coordinator de l'app, la racine même du flux de navigation.
+final class AppCoordinator: Coordinator {
+    // Sous-flux
+    var childCoordinators = [Coordinator]()
+    var navigationController: UINavigationController
+    
+    init(with navigationController: UINavigationController) {
+        self.navigationController = navigationController
+    }
+    
+    func start() {
+        print("Instanciation de la vue de départ")
+        let homeViewController = HomeViewController.instantiate(storyboardName: "Main")
+        homeViewController.coordinator = self
+        
+        // Pas d'animation pour l'écran de départ.
+        print("HomeViewController prêt.")
+        navigationController.pushViewController(homeViewController, animated: false)
+    }
+    
+    func goToListView() {
+        // La transition est séparée ici dans un sous-flux
+        let listCoordinator = ListCoordinator(navigationController: navigationController)
+        
+        // Ajout du lien vers le parent avec self
+        listCoordinator.parentCoordinator = self
+        childCoordinators.append(listCoordinator)
+        
+        // On transite de l'écran liste à l'écran détail
+        listCoordinator.start()
+    }
+}
+
+// On respecte le principe de ségrégation d'interface du SOLID.
+extension AppCoordinator: ParentCoordinator {
+    // Ajout d'un coordinator enfant au parent, le parent aura une référence sur le coordinator enfant
+    func addChildCoordinator(childCoordinator: Coordinator) {
+        self.childCoordinators.append(childCoordinator)
+    }
+
+    // Supprime un coordinator enfant depuis le parent
+    func removeChildCoordinator(childCoordinator: Coordinator) {
+        // Il faut bien vérifier la référence entre les coordinators, on utilise du coup === au lieu de ==.
+        self.childCoordinators = self.childCoordinators.filter { $0 !== childCoordinator }
+    }
+}
+```
