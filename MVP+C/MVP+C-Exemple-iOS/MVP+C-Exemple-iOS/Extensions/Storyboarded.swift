@@ -10,16 +10,16 @@ import UIKit
 
 // Ce protocole permet à un ViewController de s'instancier depuis un Storyboard
 protocol Storyboarded {
-    static func instantiate(storyboardName: String) -> Self
+    static func instantiate(storyboardName: String) -> Self?
 }
 
 /*
 -> Avec une extension sur le protocole, on définit un comportement par défaut sur une fonction, ici instantiate.
 -> De plus, le ViewController adoptant le protocole Storyboarded n'aura pas l'obligation de réimplémenter.
--> ATTENTION: Bien définir dans le Storyboard l'identifiant de Storyboard (Storyboard ID) le nom de classe du ViewController concerné. L'appli crashera sinon !
+-> ATTENTION: Bien définir dans le Storyboard l'identifiant de Storyboard (Storyboard ID) le nom de classe du ViewController concerné. L'appli crashera sinon si le cas où c'est nil n'est pas géré.
 */
 extension Storyboarded where Self: UIViewController {
-    static func instantiate(storyboardName: String) -> Self {
+    static func instantiate(storyboardName: String) -> Self? {
         // Ça retourne "<NomApp>.<Nom>ViewController"
         let fullName = NSStringFromClass(self)
 
@@ -31,7 +31,8 @@ extension Storyboarded where Self: UIViewController {
 
         // Instancie un ViewController avec ce même identifiant et retournant le type demandé. Self: le type courant du contexte actuel, ici le ViewController qui adopte ce protocole.
         guard let viewController = storyboard.instantiateViewController(withIdentifier: className) as? Self else {
-            fatalError("Le ViewController \(className) n'a pas pu être détecté dans le Storyboard \(storyboardName). Assurez-vous que le ViewController \(className) soit défini et que son StoryboardID soit défini sur \(className).")
+            print("Le ViewController \(className) n'a pas pu être détecté dans le Storyboard \(storyboardName). Assurez-vous que le ViewController \(className) soit défini et que son StoryboardID soit défini sur \(className).")
+            return nil
         }
         
         return viewController

@@ -27,7 +27,7 @@ final class ListCoordinator: Coordinator {
     // Définition du point d'entrée
     func start() {
         print("[ListCoordinator] Instanciation de la vue de la liste.")
-        let listViewController = ListViewController.instantiate(storyboardName: "Main")
+        let listViewController = ListViewController.instantiate(storyboardName: "Main") ?? ListViewController()
         listViewController.coordinator = self
         
         // On n'oublie pas de faire l'injection de dépendance du ViewModel

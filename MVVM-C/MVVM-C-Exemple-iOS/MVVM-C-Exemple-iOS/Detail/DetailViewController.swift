@@ -11,7 +11,7 @@ final class DetailViewController: UIViewController, Storyboarded {
     private var viewModel: PhoneViewModel?
     
     // Il faut que le ViewController puisse communiquer avec le Coordinator pour les différentes transitions de navigation.
-    weak var coordinator: DetailCoordinator?
+    var coordinator: DetailCoordinator?
     
     @IBOutlet weak var iPhoneNameLabel: UILabel!
     @IBOutlet weak var iPhoneImageView: UIImageView!
@@ -19,6 +19,14 @@ final class DetailViewController: UIViewController, Storyboarded {
     @IBOutlet weak var iPhoneStorageLabel: UILabel!
     @IBOutlet weak var iPhoneChipLabel: UILabel!
     @IBOutlet weak var iPhoneiOSversionsLabel: UILabel!
+    
+    init() {
+        super.init(nibName: nil, bundle: nil)
+    }
+    
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+    }
     
     override func viewDidLoad() {
         super.viewDidLoad()

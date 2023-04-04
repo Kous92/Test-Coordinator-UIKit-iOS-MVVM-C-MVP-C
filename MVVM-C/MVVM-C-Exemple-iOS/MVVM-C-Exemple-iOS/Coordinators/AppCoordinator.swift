@@ -20,7 +20,7 @@ final class AppCoordinator: Coordinator {
     
     func start() {
         print("Instanciation de la vue de départ")
-        let homeViewController = HomeViewController.instantiate(storyboardName: "Main")
+        let homeViewController = HomeViewController.instantiate(storyboardName: "Main") ?? HomeViewController()
         homeViewController.coordinator = self
         
         // Pas d'animation pour l'écran de départ.

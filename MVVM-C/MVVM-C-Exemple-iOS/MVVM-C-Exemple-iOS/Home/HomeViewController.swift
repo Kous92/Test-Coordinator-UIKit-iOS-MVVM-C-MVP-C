@@ -13,6 +13,14 @@ final class HomeViewController: UIViewController, Storyboarded {
     // Il faut que le ViewController puisse communiquer avec le Coordinator pour les différentes transitions de navigation.
     var coordinator: AppCoordinator?
     
+    init() {
+        super.init(nibName: nil, bundle: nil)
+    }
+    
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         

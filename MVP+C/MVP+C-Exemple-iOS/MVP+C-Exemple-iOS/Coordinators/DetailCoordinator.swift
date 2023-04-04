@@ -27,11 +27,11 @@ final class DetailCoordinator: Coordinator {
     // Définition du point d'entrée
     func start() {
         print("[DetailCoordinator] Instanciation de la vue détail")
-        let detailViewController = DetailViewController.instantiate(storyboardName: "Main")
+        let detailViewController = DetailViewController.instantiate(storyboardName: "Main") ?? DetailViewController()
         
         detailViewController.configure(with: viewModel)
         detailViewController.coordinator = self
-        print("DetailViewController prêt.")
+        print("[DetailCoordinator] DetailViewController prêt.")
         self.navigationController.pushViewController(detailViewController, animated: true)
     }
     

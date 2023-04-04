@@ -19,12 +19,14 @@ final class AppCoordinator: Coordinator {
     }
     
     func start() {
-        print("Instanciation de la vue de départ")
-        let homeViewController = HomeViewController.instantiate(storyboardName: "Main")
+        print("[AppCoordinator] Instanciation de la vue de départ")
+        
+        // Pour la testabilité et l'indépendance
+        let homeViewController = HomeViewController.instantiate(storyboardName: "Main") ?? HomeViewController()
         homeViewController.coordinator = self
         
         // Pas d'animation pour l'écran de départ.
-        print("HomeViewController prêt.")
+        print("[AppCoordinator] HomeViewController prêt.")
         navigationController.pushViewController(homeViewController, animated: false)
     }
     

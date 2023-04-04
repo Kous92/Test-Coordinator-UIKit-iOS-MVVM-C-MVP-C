@@ -17,6 +17,14 @@ final class ListViewController: UIViewController, Storyboarded {
     var viewModel: ListViewModel?
     private var iPhoneViewModels = [PhoneViewModel]()
     
+    init() {
+        super.init(nibName: nil, bundle: nil)
+    }
+    
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -60,13 +68,7 @@ final class ListViewController: UIViewController, Storyboarded {
     }
     
     func displayAlertErrorMessage(with errorMessage: String) {
-        let alert = UIAlertController(title: "Erreur", message: errorMessage, preferredStyle: .alert)
-        
-        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: { _ in
-            print("OK")
-        }))
-        
-        present(alert, animated: true, completion: nil)
+        coordinator?.displayAlertErrorMessage(with: errorMessage)
     }
 }
 

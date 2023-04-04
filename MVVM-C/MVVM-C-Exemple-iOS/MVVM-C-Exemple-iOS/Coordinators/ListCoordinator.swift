@@ -27,7 +27,7 @@ final class ListCoordinator: Coordinator {
     // Définition du point d'entrée
     func start() {
         print("[ListCoordinator] Instanciation de la vue de la liste.")
-        let listViewController = ListViewController.instantiate(storyboardName: "Main")
+        let listViewController = ListViewController.instantiate(storyboardName: "Main") ?? ListViewController()
         listViewController.coordinator = self
         
         // On n'oublie pas de faire l'injection de dépendance du ViewModel
@@ -56,6 +56,18 @@ final class ListCoordinator: Coordinator {
         
         // On transite de l'écran liste à l'écran détail
         detailCoordinator.start()
+    }
+    
+    func displayAlertErrorMessage(with errorMessage: String) {
+        print("[ListCoordinator] Affichage d'une alerte.")
+        
+        let alert = UIAlertController(title: "Erreur", message: errorMessage, preferredStyle: .alert)
+        
+        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: { _ in
+            print("OK")
+        }))
+        
+        navigationController.present(alert, animated: true, completion: nil)
     }
 }
 
