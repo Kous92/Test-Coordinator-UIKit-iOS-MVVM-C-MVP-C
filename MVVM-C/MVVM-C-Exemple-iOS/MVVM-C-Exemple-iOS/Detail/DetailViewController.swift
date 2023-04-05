@@ -11,14 +11,15 @@ final class DetailViewController: UIViewController, Storyboarded {
     private var viewModel: PhoneViewModel?
     
     // Il faut que le ViewController puisse communiquer avec le Coordinator pour les différentes transitions de navigation.
-    var coordinator: DetailCoordinator?
+    // Attention à la rétention de cycle, ici: DetailCoordinator -> UINavigationController -> DetailViewController -> DetailCoordinator
+    weak var coordinator: DetailViewControllerDelegate?
     
-    @IBOutlet weak var iPhoneNameLabel: UILabel!
-    @IBOutlet weak var iPhoneImageView: UIImageView!
-    @IBOutlet weak var iPhoneYearLabel: UILabel!
-    @IBOutlet weak var iPhoneStorageLabel: UILabel!
-    @IBOutlet weak var iPhoneChipLabel: UILabel!
-    @IBOutlet weak var iPhoneiOSversionsLabel: UILabel!
+    @IBOutlet private weak var iPhoneNameLabel: UILabel!
+    @IBOutlet private weak var iPhoneImageView: UIImageView!
+    @IBOutlet private weak var iPhoneYearLabel: UILabel!
+    @IBOutlet private weak var iPhoneStorageLabel: UILabel!
+    @IBOutlet private weak var iPhoneChipLabel: UILabel!
+    @IBOutlet private weak var iPhoneiOSversionsLabel: UILabel!
     
     init() {
         super.init(nibName: nil, bundle: nil)
@@ -33,8 +34,12 @@ final class DetailViewController: UIViewController, Storyboarded {
         setViews()
     }
     
+    // ATTENTION: Cela se déclenche aussi bien lorsque l'écran est détruit que lorsque qu'il y a un écran qui va aller au-dessus de celui-ci.
     override func viewWillDisappear(_ animated: Bool) {
-        coordinator?.backToListView()
+        // On s'assure qu'on fait bien un retour
+        if isMovingFromParent {
+            coordinator?.backToListView()
+        }
     }
     
     func configure(with viewModel: PhoneViewModel) {

@@ -29,7 +29,6 @@
 		4BCD4C3E29DB177800A869AF /* DetailCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BCD4C3D29DB177800A869AF /* DetailCoordinator.swift */; };
 		4BCD4C4029DB17EE00A869AF /* ListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BCD4C3F29DB17EE00A869AF /* ListViewController.swift */; };
 		4BCD4C4229DB17FB00A869AF /* PhoneTableViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BCD4C4129DB17FB00A869AF /* PhoneTableViewCell.swift */; };
-		4BCD4C4429DB182800A869AF /* ListViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BCD4C4329DB182800A869AF /* ListViewModel.swift */; };
 		4BCD4C4629DB184100A869AF /* ListPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BCD4C4529DB184100A869AF /* ListPresenter.swift */; };
 		4BCD4C4A29DB1A1500A869AF /* Storyboarded.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BCD4C4929DB1A1500A869AF /* Storyboarded.swift */; };
 		4BCD4C4C29DB1A2900A869AF /* ImageLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BCD4C4B29DB1A2900A869AF /* ImageLoader.swift */; };
@@ -78,7 +77,6 @@
 		4BCD4C3D29DB177800A869AF /* DetailCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailCoordinator.swift; sourceTree = "<group>"; };
 		4BCD4C3F29DB17EE00A869AF /* ListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListViewController.swift; sourceTree = "<group>"; };
 		4BCD4C4129DB17FB00A869AF /* PhoneTableViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneTableViewCell.swift; sourceTree = "<group>"; };
-		4BCD4C4329DB182800A869AF /* ListViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListViewModel.swift; sourceTree = "<group>"; };
 		4BCD4C4529DB184100A869AF /* ListPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListPresenter.swift; sourceTree = "<group>"; };
 		4BCD4C4929DB1A1500A869AF /* Storyboarded.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Storyboarded.swift; sourceTree = "<group>"; };
 		4BCD4C4B29DB1A2900A869AF /* ImageLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageLoader.swift; sourceTree = "<group>"; };
@@ -200,7 +198,6 @@
 			children = (
 				4BCD4C3F29DB17EE00A869AF /* ListViewController.swift */,
 				4BCD4C4129DB17FB00A869AF /* PhoneTableViewCell.swift */,
-				4BCD4C4329DB182800A869AF /* ListViewModel.swift */,
 				4BCD4C4529DB184100A869AF /* ListPresenter.swift */,
 			);
 			path = List;
@@ -377,7 +374,6 @@
 				4BCD4C4229DB17FB00A869AF /* PhoneTableViewCell.swift in Sources */,
 				4BCD4C4A29DB1A1500A869AF /* Storyboarded.swift in Sources */,
 				4BCD4C3829DB175E00A869AF /* Coordinator.swift in Sources */,
-				4BCD4C4429DB182800A869AF /* ListViewModel.swift in Sources */,
 				4BCD4BF229DB159400A869AF /* AppDelegate.swift in Sources */,
 				4BCD4C4C29DB1A2900A869AF /* ImageLoader.swift in Sources */,
 				4BCD4C4029DB17EE00A869AF /* ListViewController.swift in Sources */,

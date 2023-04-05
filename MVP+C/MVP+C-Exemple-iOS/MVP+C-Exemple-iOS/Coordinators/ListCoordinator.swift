@@ -8,10 +8,18 @@
 import Foundation
 import UIKit
 
-final class ListCoordinator: Coordinator {
+// On respecte les 4ème et 5ème principe du SOLID de la ségrégation d'interface et de l'inversion de dépendances
+protocol ListViewControllerDelegate: AnyObject {
+    func backToHomeView()
+    func goToDetailView(with viewModel: PhoneViewModel)
+    func displayAlertErrorMessage(with errorMessage: String)
+}
+
+final class ListCoordinator: Coordinator, ParentCoordinator {
+    // Attention à la rétention de cycle, le sous-flux ne doit pas retenir la référence avec le parent.
+    weak var parentCoordinator: Coordinator?
     
-    var parentCoordinator: ParentCoordinator?
-    var navigationController: UINavigationController
+    private(set) var navigationController: UINavigationController
     var childCoordinators = [Coordinator]()
     
     init(navigationController : UINavigationController) {
@@ -30,16 +38,19 @@ final class ListCoordinator: Coordinator {
         let listViewController = ListViewController.instantiate(storyboardName: "Main") ?? ListViewController()
         listViewController.coordinator = self
         
-        // On n'oublie pas de faire l'injection de dépendance du ViewModel
+        // On n'oublie pas de faire l'injection de dépendance du Presenter
         listViewController.presenter = ListPresenter(with: NetworkAPIService(), listViewController: listViewController)
         
         print("[ListCoordinator] Navigation vers la vue de la liste.")
         navigationController.pushViewController(listViewController, animated: true)
         print(navigationController.viewControllers)
     }
-    
+}
+
+// On respecte les principes de ségrégation d'interface et d'inversion de dépendances du SOLID.
+extension ListCoordinator: ListViewControllerDelegate {
     func backToHomeView() {
-        print("[ListCoordinator] Retour à l'écran d'accueil.")
+        print("[ListCoordinator] Retour à l'écran d'accueil: suppression du coordinator.")
         
         // Nettoyage du coordinator enfant
         parentCoordinator?.removeChildCoordinator(childCoordinator: self)
@@ -50,25 +61,23 @@ final class ListCoordinator: Coordinator {
         // La transition est séparée ici dans un sous-flux
         let detailCoordinator = DetailCoordinator(navigationController: navigationController, viewModel: viewModel)
         
-        // Ajout du lien vers le parent avec self
+        // Ajout du lien vers le parent avec self, attention à la rétention de cycle
         detailCoordinator.parentCoordinator = self
-        childCoordinators.append(detailCoordinator)
+        addChildCoordinator(childCoordinator: detailCoordinator)
         
         // On transite de l'écran liste à l'écran détail
         detailCoordinator.start()
     }
-}
-
-// On respecte le principe de ségrégation d'interface du SOLID.
-extension ListCoordinator: ParentCoordinator {
-    // Ajout d'un coordinator enfant au parent, le parent aura une référence sur le coordinator enfant
-    func addChildCoordinator(childCoordinator: Coordinator) {
-        self.childCoordinators.append(childCoordinator)
-    }
-
-    // Supprime un coordinator enfant depuis le parent
-    func removeChildCoordinator(childCoordinator: Coordinator) {
-        // Il faut bien vérifier la référence entre les coordinators, on utilise du coup === au lieu de ==.
-        self.childCoordinators = self.childCoordinators.filter { $0 !== childCoordinator }
+    
+    func displayAlertErrorMessage(with errorMessage: String) {
+        print("[ListCoordinator] Affichage d'une alerte.")
+        
+        let alert = UIAlertController(title: "Erreur", message: errorMessage, preferredStyle: .alert)
+        
+        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: { _ in
+            print("OK")
+        }))
+        
+        navigationController.present(alert, animated: true, completion: nil)
     }
 }

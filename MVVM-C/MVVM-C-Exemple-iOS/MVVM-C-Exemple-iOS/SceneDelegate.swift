@@ -10,6 +10,8 @@ import UIKit
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     var window: UIWindow?
+    
+    // Il est important de garder ici une référence forte pour la gestion du flux de navigation.
     var coordinator: AppCoordinator?
 
     // C'est ici qu'on va mettre en place la racine de la logique de navigation, le Coordinator parent, étant aussi le point d'entrée de l'application.

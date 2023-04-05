@@ -12,7 +12,7 @@ En 2015, d'un constat de nombreuses responsabilités qu'un `ViewController` peut
 
 Avant d'aborder en profondeur le pattern `Coordinator`, il est important d'en connaître sa définition et de savoir l'expliquer de manière simple et concrète, le jour de l'entretien technique (souvent exigeant).
 
-Rappelons d'abord qu'est-ce qu'un design pattern ?
+### Rappelons d'abord qu'est-ce qu'un design pattern ?
 
 Un design pattern est une solution éprouvée et réutilisable à un problème commun de conception de logiciel. Il s'agit d'un modèle général de conception de code qui peut être adapté et réutilisé dans différents projets pour résoudre des problèmes similaires.
 
@@ -56,29 +56,47 @@ Toute utilisation de ce pattern doit utiliser `AppDelegate` ou `SceneDelegate` p
 
 Pour l'implémentation de ce pattern, on va définir 2 protocoles, un pour le `Coordinator` et un autre pour celui qui sera le parent du `Coordinator` enfant. 2 protocoles sont définis car on souhaite respecter le 4ème principe du SOLID qui est la ségrégation d'interfaces où une classe implémentant un protocole qu'avec ce qu'il a besoin.
 
-On définit dans le premier protocole `Coordinator`, 2 attributs et une méthode.
+On définit dans le premier protocole `Coordinator`, 2 attributs et 3 méthodes dont 2 qui seront optionnels à réimplémenter.
 
 ```swift
 import UIKit
 
 protocol Coordinator: AnyObject {
     var childCoordinators: [Coordinator] { get set }
-    var navigationController: UINavigationController { get set }
+    var navigationController: UINavigationController { get }
     
     func start()
+    func addChildCoordinator(childCoordinator: Coordinator)
+    func removeChildCoordinator(childCoordinator: Coordinator)
+}
+
+extension Coordinator {
+    // Ajout d'un coordinator enfant au parent, le parent aura une référence sur le coordinator enfant
+    func addChildCoordinator(childCoordinator: Coordinator) {
+        self.childCoordinators.append(childCoordinator)
+    }
+
+    // Supprime un coordinator enfant depuis le parent
+    func removeChildCoordinator(childCoordinator: Coordinator) {
+        // Il faut bien vérifier la référence entre les coordinators, on utilise du coup === au lieu de ==.
+        self.childCoordinators = self.childCoordinators.filter { $0 !== childCoordinator }
+    }
 }
 ```
 
 - `navigationController`: La logique de navigation va donc se faire dans un `UINavigationController` et les transitions peuvent se faire aussi bien avec `push` qu'avec `present` (si on n'a pas besoin de la barre de navigation, qu'on veut une transition modale).
-- `childCoordinators` représente les sous-flux du `Coordinator` actuel, chaque `Coordinator` faisant office de parent aura comme mission de gérer les références entre les `Coordinator` parent et enfant. Le cas pratique le plus pertinent est lors de l'utilisation d'un `TabBarController` en bas de l'écran où il peut y avoir plusieurs `ViewController`, chacun d'entre eux ayant son propre flux (`Coordinator`).
+- `childCoordinators` représente les sous-flux du `Coordinator` actuel, chaque `Coordinator` faisant office de parent aura comme mission de gérer les références entre les `Coordinator` parent et enfant. Le cas pratique le plus pertinent est lors de l'utilisation d'un `TabBarController` en bas de l'écran où il peut y avoir plusieurs `ViewController`, chacun d'entre eux ayant son propre flux (`Coordinator`). Il y a donc ici une arborescence entre le flux principal (`Coordinator` parent) et les sous-flux (`Coordinator` enfants), qui eux-même peuvent respectivement avoir des relations vers d'autres sous-flux.
 - `start()` sera la méthode qui instanciera le `ViewController` et qui affichera l'écran de départ ou effectuera la transition d'un écran à un autre.
 
-On définit dans le second protocole `ParentCoordinator`, 2 méthodes qui vont eux gérer les sous-flux (les `Coordinator` enfants). Le but ici est de maintenir une relation entre 2 `Coordinator` quand il faut par exemple faire passer des données (notamment vers le précédent écran). Ce protocole est inutile à implémenter si le dernier écran de la pile de navigation n'a pas de liens vers d'autres écrans.
+Les 2 méthodes dans l'extension du protocole vont s'appliquer à l'ensemble des `Coordinator` concrets implémentant le protocole, ces comportement seront les mêmes, faisant ainsi en sorte qu'il n'est pas obligatoire de réimplémenter ces méthodes.
+- `addChildCoordinator()`: Cette fonction va ajouter un sous-flux de navigation depuis le `Coordinator` actuel qui aura donc une relation (référence) avec le `Coordinator` enfant.
+- `removeChildCoordinator()`: Cette fonction va supprimer un sous-flux de navigation depuis le `Coordinator` actuel lorsque l'écran associé au `Coordinator` enfant est détruit. Cette fonction est importante pour la gestion mémoire afin d'éviter les memory leaks.
+
+On définit dans le second protocole `ParentCoordinator`, un attribut pour un `Coordinator` enfant (sous-flux) ayant une relation avec un `Coordinator` parent. Le but ici est de maintenir une relation entre 2 `Coordinator` quand il faut par exemple faire passer des données (notamment vers le précédent écran).
 
 ```swift
 protocol ParentCoordinator: AnyObject {
-    func addChildCoordinator(childCoordinator: Coordinator)
-    func removeChildCoordinator(childCoordinator: Coordinator)
+    var parentCoordinator: Coordinator? { get }
 }
 ```
 - `addChildCoordinator()`: Cette fonction va ajouter un sous-flux de navigation depuis le `Coordinator` actuel qui aura donc une relation (référence) avec le `Coordinator` enfant.
@@ -86,54 +104,79 @@ protocol ParentCoordinator: AnyObject {
 
 ### Racine de la navigation
 
-Une fois les protocoles définis, on va créer le `Coordinator` principal, qu'on nommera `AppCoordinator` et qui implémentera les 2 protocoles.
+Une fois les protocoles définis, on va créer le `Coordinator` principal, qu'on nommera `AppCoordinator`.
 
-Ici, on injectera une dépendance d'un `UINavigationController` pour la racine de la navigation.
+On commence par mettre en place le design pattern de la délégation (`delegate`) avec un protocole qui permettra à `AppCoordinator` d'être plus facilement testable, du fait qu'il est indépendant du `ViewController`. On respecte donc ainsi 2 principes du SOLID qui sont:
+- 4ème principe du SOLID (I) étant la ségrégation d'interfaces, où une classe implémentant un protocole qu'avec ce qu'il a besoin.
+- 5ème et dernier principe du SOLID (D) étant l'inversion de dépendances, où les abstractions ne doivent pas dépendre des détails. Les détails devraient dépendre des abstractions.
+
+### Rappelons très rapidement ce qu'est la délégation.
+
+La délégation est un pattern qui permet à une classe de déléguer certaines de ses responsabilités à une autre classe.
+
+Elle facilite donc la communication entre classes et délivre des messages d'un objet à un autre lorsqu'un événement spécifique se déclenche.
+
+La délégation se met en place par le biais d'un protocole. La classe qui délègue aura une référence faible (weak) vers la classe qui exécutera les méthodes du protocole et fera les appels des méthodes de ce dernier. La classe qui impléméntera les méthodes du protocole aura une référence vers la classe qui délègue.
+
+Apple utilise ce pattern dans des éléments de UIKit qu'on utilise souvent comme par exemple `UITableViewDelegate`, `UITableViewDataSource`, `UICollectionViewDelegate`, `UICollectionViewDataSource`, `UISearchBarDelegate`, ...
+
+On définit donc le protocole ci-dessous, on définit une méthode que `AppCoordinator` implémentera derrière. Et que `HomeViewController` aura comme référence pour être en relation avec `AppCoordinator`.
+
+```swift
+// On respecte les 4ème et 5ème principe du SOLID de la ségrégation d'interface et de l'inversion de dépendances
+protocol HomeViewControllerDelegate: AnyObject {
+    func goToListView()
+}
+```
 
 Dans l'exemple ci-dessous, voici la définition de la racine du flux de navigation de l'app iOS, `AppCoordinator`.
 
-On y adopte les 2 protocoles `Coordinator` et `ParentCoordinator` car `AppCoordinator` est le point de départ du flux de navigation et qui aura donc des relations avec d'autres écrans.
+On y adopte 2 protocoles `Coordinator` et `ParentCoordinator` car `AppCoordinator` est le point de départ du flux de navigation et qui aura donc des relations avec d'autres écrans.
 
 Commençons avec le premier protocole `Coordinator`, où les 2 attributs `navigationController` et `childCoordinators` sont définis.
 
-L'affectation de la référence de `navigationController` s'effectuera par injection de dépendance avec un initialiseur.
+L'affectation de la référence de `navigationController` s'effectuera par injection de dépendance avec un initialiseur. Dans ce cas particulier, c'est ici que la racine de la navigation est définie.
 
 Dans la méthode `start()`, on y définira l'écran de départ à chaque fois que l'application démarre. Le flux peut varier si par exemple l'accès aux fonctionnalités de l'application nécessite une authentification utilisateur, c'est-à-dire s'il n'est pas connecté, l'écran de départ sera une interface de connexion. S'il est connecté, l'écran de départ sera un écran d'accueil.
 
-On y ajoutera aussi une méthode pour effectuer la navigation de l'écran de départ vers un autre écran, ici dans l'exemple `goToListView()`. On abordera plus tard dans l'article les détails pour la transition.
-
-Pour définir l'écran de départ, on instancie donc le `ViewController` concerné et on y affecte une référence avec `AppCoordinator`. Pour l'instanciation, vous pouvez le faire soit par `Storyboard`, ou bien de manière programmatique en y définissant un initialiseur dans le `ViewController`. On peut aussi effectuer des injections de dépendances si par exemple le `ViewController` a des attributs où par exemple elle dépend d'un `ViewModel` ou d'un `Presenter` dans le cadre d'une architecture **MVVM** ou **MVP**.
+Pour définir l'écran de départ, on instancie donc le `ViewController` concerné et on y affecte une référence avec `AppCoordinator` (on fera très attention à la rétention de cycle). Pour l'instanciation, vous pouvez le faire soit par `Storyboard`, ou bien de manière programmatique en y définissant un initialiseur dans le `ViewController`. On peut aussi effectuer des injections de dépendances si par exemple le `ViewController` a des attributs où par exemple elle dépend d'un `ViewModel` ou d'un `Presenter` dans le cadre d'une architecture **MVVM** ou **MVP**.
 
 Pour terminer, on effectue la transition avec `navigationController` sans animation pour cette première vue, avec `push` pour ajouter le premier écran dans la pile de navigation.
 
+Dans le second protocole `HomeViewControllerDelegate`, on définit le comportement de la méthode pour effectuer la navigation de l'écran de départ vers un autre écran, ici dans l'exemple `goToListView()`. On abordera plus tard dans l'article les détails pour la transition.
+
 ```swift
 // Le principal Coordinator de l'app, la racine même du flux de navigation.
-final class AppCoordinator: Coordinator {
+final class AppCoordinator: Coordinator {    
     // Sous-flux
     var childCoordinators = [Coordinator]()
-    var navigationController: UINavigationController
+    private(set) var navigationController: UINavigationController
     
     init(with navigationController: UINavigationController) {
         self.navigationController = navigationController
     }
     
     func start() {
-        print("Instanciation de la vue de départ")
-        let homeViewController = HomeViewController.instantiate(storyboardName: "Main")
+        print("[AppCoordinator] Instanciation de la vue de départ")
+        
+        // Pour la testabilité et l'indépendance
+        let homeViewController = HomeViewController.instantiate(storyboardName: "Main") ?? HomeViewController()
         homeViewController.coordinator = self
         
         // Pas d'animation pour l'écran de départ.
-        print("HomeViewController prêt.")
+        print("[AppCoordinator] HomeViewController prêt.")
         navigationController.pushViewController(homeViewController, animated: false)
     }
+}
 
+extension AppCoordinator: HomeViewControllerDelegate {
     func goToListView() {
         // La transition est séparée ici dans un sous-flux
         let listCoordinator = ListCoordinator(navigationController: navigationController)
         
-        // Ajout du lien vers le parent avec self
+        // Ajout du lien vers le parent avec self, attention à la rétention de cycle
         listCoordinator.parentCoordinator = self
-        childCoordinators.append(listCoordinator)
+        addChildCoordinator(childCoordinator: listCoordinator)
         
         // On transite de l'écran liste à l'écran détail
         listCoordinator.start()
@@ -141,7 +184,11 @@ final class AppCoordinator: Coordinator {
 }
 ```
 
-Voici comment s'implémente le `ViewController`. On y définit un attribut ayant une référence vers le `Coordinator` afin d'effectuer d'éventuelles actions comme naviguer vers un autre écran. Il n'y a pas de cycle de référence explicite entre le `ViewController` et le `Coordinator` car cette référence se met en place dans la méthode `start()` du `Coordinator`. Si le `Coordinator` avait un attribut vers le `ViewController`, là il faudrait que le `ViewController` ait une référence faible (`weak`) vers le `Coordinator` et donc éviter la rétention de cycle impliquant une fuite de mémoire (`memory leak`) si l'écran est détruit.
+Voici comment s'implémente le `ViewController`. On y définit un attribut ayant une référence vers `AppCoordinator` de manière indirecte et découplée via `HomeViewControllerDelegate` afin d'effectuer d'éventuelles actions comme naviguer vers un autre écran. 
+
+**ATTENTION:** Il y a un cycle de références du fait que `AppCoordinator` ait une référence forte (strong) de `navigationController` qui lui même a une référence vers `HomeViewController` dans sa pile de navigation. `HomeViewController` a quant à lui une référence vers `AppCoordinator` par le biais de `HomeViewControllerDelegate`. Cette référence sera donc faible (`weak`) car il ne faut pas que `HomeViewController` ait une rétention de `AppCoordinator`, pour également éviter les fuites de mémoire (`memory leak`), si l'écran est détruit.
+
+![Cycle de références ViewController](ViewControllerReferenceCycle.png)
 
 Lorsqu'on voudra aller vers un autre écran, c'est donc depuis la référence de `coordinator`, ici `coordinator?.goToListView()` dans l'exemple pour aller de `HomeViewController` vers `ListViewController`.
 ```swift
@@ -149,7 +196,8 @@ Lorsqu'on voudra aller vers un autre écran, c'est donc depuis la référence de
 final class HomeViewController: UIViewController, Storyboarded {
     
     // Il faut que le ViewController puisse communiquer avec le Coordinator pour les différentes transitions de navigation.
-    var coordinator: AppCoordinator?
+    // Attention à la rétention de cycle, ici: HomeCoordinator -> UINavigationController -> HomeViewController -> HomeCoordinator
+    weak var coordinator: HomeViewControllerDelegate?
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -198,32 +246,11 @@ extension Storyboarded where Self: UIViewController {
 }
 ```
 
-Voici l'implémentation des méthodes du second protocole `ParentCoordinator` pour la gestion des sous-flux (`childCoordinators`). 
-
-Pour l'ajout d'un sous-flux avec `addChildCoordinator()`, très simple, juste à ajouter dans le tableau des `Coordinator` enfants une référence vers le sous-flux.
-
-Pour supprimer un sous-flux après destruction de l'écran, on vérifie dans le tableau la référence à supprimer. On utilisera un opérateur particulier qui est `===` afin de comparer ici si 2 instances ont la même référence entre eux. Cela est nécessaire pour la gestion de mémoire et pour prévenir de toute fuite de mémoire. 
-```swift
-// On respecte le principe de ségrégation d'interface du SOLID.
-extension AppCoordinator: ParentCoordinator {
-    // Ajout d'un coordinator enfant au parent, le parent aura une référence sur le coordinator enfant
-    func addChildCoordinator(childCoordinator: Coordinator) {
-        self.childCoordinators.append(childCoordinator)
-    }
-
-    // Supprime un coordinator enfant depuis le parent
-    func removeChildCoordinator(childCoordinator: Coordinator) {
-        // Il faut bien vérifier la référence entre les coordinators, on utilise du coup === au lieu de ==.
-        self.childCoordinators = self.childCoordinators.filter { $0 !== childCoordinator }
-    }
-}
-```
-
 Dernière étape, on définit le point de départ, soit depuis:
 - `AppDelegate` dans la méthode `application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?)`
 - `SceneDelegate` dans la méthode `scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions)` (iOS 13 ou plus requis).
 
-Ici, on va définir par exemple avec `SceneDelegate` une référence vers le `Coordinator` (flux) principal. Et dans la méthode `scene()`, on définit la fenêtre qui y contiendra la vue racine.
+Ici, on va définir par exemple avec `SceneDelegate` une référence vers le `Coordinator` (flux) principal. Et dans la méthode `scene()`, on définit la fenêtre qui y contiendra la vue racine. On déclare un attribut pour la racine de navigation, ici `AppCoordinator` car il faut ici garder une référence forte (`strong`) pour tout le cycle de vie de l'application.
 
 Voici le cycle d'initialisation de l'application avec le `Coordinator`:
 1) On récupère la scène de la fenêtre.
@@ -263,6 +290,10 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 }
 ```
 
+Ci-dessous un schéma récapitulatif du flux de navigation.
+
+![Flux de navigation](AppStartCycle.png)
+
 Voici donc ci-dessous l'écran lorsqu'on démarre l'application.
 
 <img src="HomeScreen.png" width="300">
@@ -273,7 +304,11 @@ Maintenant, on veut implémenter une transition vers un autre écran, ici de l'�
 
 Dans l'implémentation ci-dessous, on reprend la même implémentation que dans celle de `AppCoordinator` mais avec des éléments en plus. En premier lieu, `ListCoordinator` est un sous-flux, on y ajoute donc une référence vers `AppCoordinator` par le biais de l'abstraction `ParentCoordinator`. 
 
-L'initialiseur est similaire, mais on va ici lors de l'injection de dépendances injecter le `UINavigationController` de `AppCoordinator`, sinon cela créera une nouvelle pile de navigation et le flux de navigation sera alors difficile voire impossible à gérer.
+**ATTENTION:** La référence de `ListCoordinator` vers `AppCoordinator` doit être faible (`weak`) car `AppCoordinator` a une référence forte de `ListCoordinator` depuis `childCoordinators` (le tableau de `Coordinator`). On évite encore une fois la rétention de cycle (fuite de mémoire).
+
+![Cycle de références Coordinators](CoordinatorsReferenceCycle.png)
+
+L'initialiseur est similaire, mais on va ici lors de l'injection de dépendance injecter le `UINavigationController` de `AppCoordinator`, sinon cela créera une nouvelle pile de navigation et le flux de navigation sera alors difficile voire impossible à gérer.
 
 Pour la méthode `start()`, le processus reprend ceux de `AppCoordinator`. Ici dans l'exemple, on effectuera aussi des injections de dépendances, car `ListViewController` suit une logique de l'architecture **MVVM**, on y injecte donc une instance d'un `ViewModel` pour la gestion de la logique métier, ici télécharger des données. On n'oublie pas aussi la référence de `ListCoordinator`.
 
@@ -282,11 +317,23 @@ Cet écran a 3 possibilités:
 - On peut afficher la vue détail d'un élément lorsque qu'on a sélectionné une cellule, c'est donc là qu'on peut faire passer des données, ici avec la méthode `goToDetailView(with viewModel: PhoneViewModel)`.
 - On peut afficher une alerte lorsqu'il y a eu une erreur depuis le `ViewModel`.
 
+Encore une fois, on va appliquer le pattern de la délégation, avec un protocole qui permettra à `ListCoordinator` d'être plus facilement testable, du fait qu'il est indépendant du `ViewController`. On respecte encore une fois le 4ème principe du SOLID (ségrégation d'interface) et 5ème principe du SOLID (l'inversion de dépendances).
+
 ```swift
-final class ListCoordinator: Coordinator {
-    
-    var parentCoordinator: ParentCoordinator?
-    var navigationController: UINavigationController
+// On respecte les 4ème et 5ème principe du SOLID de la ségrégation d'interface et de l'inversion de dépendances
+protocol ListViewControllerDelegate: AnyObject {
+    func backToHomeView()
+    func goToDetailView(with viewModel: PhoneViewModel)
+    func displayAlertErrorMessage(with errorMessage: String)
+}
+```
+
+Ci-dessous la classe `ListCoordinator`, adoptant les 3 protocoles (`Coordinator`, `ParentCoordinator` et `ListViewControllerDelegate`)
+```swift
+final class ListCoordinator: Coordinator, ParentCoordinator {
+    // Attention à la rétention de cycle, le sous-flux ne doit pas retenir la référence avec le parent.
+    weak var parentCoordinator: Coordinator?
+    private(set) var navigationController: UINavigationController
     var childCoordinators = [Coordinator]()
     
     init(navigationController : UINavigationController) {
@@ -303,6 +350,8 @@ final class ListCoordinator: Coordinator {
     func start() {
         print("[ListCoordinator] Instanciation de la vue de la liste.")
         let listViewController = ListViewController.instantiate(storyboardName: "Main") ?? ListViewController()
+
+        // Délégation par ListViewController, attention à la rétention de cycle
         listViewController.coordinator = self
         
         // On n'oublie pas de faire l'injection de dépendance du ViewModel
@@ -312,9 +361,12 @@ final class ListCoordinator: Coordinator {
         navigationController.pushViewController(listViewController, animated: true)
         print(navigationController.viewControllers)
     }
-    
+}
+
+// On respecte les principes de ségrégation d'interface et d'inversion de dépendances du SOLID.
+extension ListCoordinator: ListViewControllerDelegate {
     func backToHomeView() {
-        print("[ListCoordinator] Retour à l'écran d'accueil.")
+        print("[ListCoordinator] Retour à l'écran d'accueil: suppression du coordinator.")
         
         // Nettoyage du coordinator enfant
         parentCoordinator?.removeChildCoordinator(childCoordinator: self)
@@ -325,14 +377,14 @@ final class ListCoordinator: Coordinator {
         // La transition est séparée ici dans un sous-flux
         let detailCoordinator = DetailCoordinator(navigationController: navigationController, viewModel: viewModel)
         
-        // Ajout du lien vers le parent avec self
+        // Ajout du lien vers le parent avec self, attention à la rétention de cycle
         detailCoordinator.parentCoordinator = self
-        childCoordinators.append(detailCoordinator)
+        addChildCoordinator(childCoordinator: detailCoordinator)
         
         // On transite de l'écran liste à l'écran détail
         detailCoordinator.start()
     }
-
+    
     func displayAlertErrorMessage(with errorMessage: String) {
         print("[ListCoordinator] Affichage d'une alerte.")
         
@@ -343,20 +395,6 @@ final class ListCoordinator: Coordinator {
         }))
         
         navigationController.present(alert, animated: true, completion: nil)
-    }
-}
-
-// On respecte le principe de ségrégation d'interface du SOLID.
-extension ListCoordinator: ParentCoordinator {
-    // Ajout d'un coordinator enfant au parent, le parent aura une référence sur le coordinator enfant
-    func addChildCoordinator(childCoordinator: Coordinator) {
-        self.childCoordinators.append(childCoordinator)
-    }
-
-    // Supprime un coordinator enfant depuis le parent
-    func removeChildCoordinator(childCoordinator: Coordinator) {
-        // Il faut bien vérifier la référence entre les coordinators, on utilise du coup === au lieu de ==.
-        self.childCoordinators = self.childCoordinators.filter { $0 !== childCoordinator }
     }
 }
 ```
@@ -374,9 +412,9 @@ final class AppCoordinator: Coordinator {
         // La transition est séparée ici dans un sous-flux
         let listCoordinator = ListCoordinator(navigationController: navigationController)
         
-        // Ajout du lien vers le parent avec self
+        // Ajout du lien vers le parent avec self, attention à la rétention de cycle
         listCoordinator.parentCoordinator = self
-        childCoordinators.append(listCoordinator)
+        addChildCoordinator(childCoordinator: listCoordinator)
         
         // On transite de l'écran liste à l'écran détail
         listCoordinator.start()
@@ -386,7 +424,11 @@ final class AppCoordinator: Coordinator {
 
 Voici ci-dessous comment `ListViewController` s'implémente et comment les différentes transitions de navigation s'effectuent avec la référence vers `ListCoordinator`.
 
-Si `push` a été utilisé pour que `ListViewController` soit dans la pile de navigation, la particularité est le bouton retour de la barre de navigation. Si on ne peut pas créer une fonction gérant cet événement, on va donc appeler la fonction de retour dans `viewWillDisappear()` afin d'effectuer le nettoyage des références, ici `ListViewController` et `ListCoordinator` sont détruits. Dans le cas où une vue serait présentée modalement (avec `present`) et qu'on déclenche la fermeture depuis une fonction (via un bouton par exemple), c'est donc par une méthode dans le `Coordinator` qu'on effectuera cette fermeture avec `dismiss()`.
+Si `push` a été utilisé pour que `ListViewController` soit dans la pile de navigation, la particularité est le bouton retour de la barre de navigation. Si on ne peut pas créer une fonction gérant cet événement, on va donc appeler la fonction de retour dans `viewWillDisappear()` afin d'effectuer le nettoyage des références, ici `ListViewController` et `ListCoordinator` sont détruits. **ATTENTION:** il faut s'assurer qu'on gère correctement l'événement où la vue est retirée de la pile, donc avec `isMovingFromParent` car `viewWillDisappear()` se déclenche aussi quand un autre `ViewController` se met au-dessus de lui (ici `isMovingToParent`).
+
+ Dans le cas où une vue serait présentée modalement (avec `present`) et qu'on déclenche la fermeture depuis une fonction (via un bouton par exemple), c'est donc par une méthode dans le `Coordinator` qu'on effectuera cette fermeture avec `dismiss()`.
+
+ **RAPPEL:** Il y a un cycle de références du fait que `ListCoordinator` ait une référence forte (strong) de `navigationController` qui lui même a une référence vers `ListViewController` dans sa pile de navigation. `ListViewController` a quant à lui une référence vers `ListCoordinator` par le biais de `ListViewControllerDelegate`. Cette référence sera donc faible (`weak`) car il ne faut pas que `ListViewController` ait une rétention de `ListCoordinator`, pour également éviter les fuites de mémoire (`memory leak`), si l'écran est détruit.
 
 ```swift
 final class ListViewController: UIViewController, Storyboarded {
@@ -395,7 +437,8 @@ final class ListViewController: UIViewController, Storyboarded {
     @IBOutlet weak var tableView: UITableView!
     
     // Il faut que le ViewController puisse communiquer avec le Coordinator pour les différentes transitions de navigation.
-    var coordinator: ListCoordinator?
+    // Attention à la rétention de cycle, ici: ListCoordinator -> UINavigationController -> ListViewController -> ListCoordinator
+    weak var coordinator: ListViewControllerDelegate?
     var viewModel: ListViewModel?
     private var iPhoneViewModels = [PhoneViewModel]()
     ...
@@ -405,9 +448,13 @@ final class ListViewController: UIViewController, Storyboarded {
         viewModel?.fetchiPhonesData()
     }
     
+    // ATTENTION: Cela se déclenche aussi bien lorsque l'écran est détruit que lorsque qu'il y a un écran qui va aller au-dessus de celui-ci.
     override func viewWillDisappear(_ animated: Bool) {
-        coordinator?.backToHomeView()
-    } 
+        // On s'assure qu'on fait bien un retour vers l'écran précédent
+        if isMovingFromParent {
+            coordinator?.backToHomeView()
+        }
+    }
     ...
     func setBindings() {
         viewModel?.updateBinding = { [weak self] result in
@@ -435,21 +482,32 @@ extension ListViewController: UITableViewDelegate {
 ...
 ```
 
-Voici donc ci-dessous l'écran de la liste
+Voici donc ci-dessous l'écran de la liste.
 
 <img src="ListScreen.png" width="300">
 
 ### Dernier écran de la pile
 
-Appliquons ensuite le même procédé pour l'initialisation et la transition avec `start()` pour le dernier écran, la vue détail. Une particularité ici, est que la vue détail n'a pas à effectuer de transition vers une nouvelle vue, le protocole `ParentCoordinator` est donc inutile à implémenter, et on respecte donc le 4ème principe du SOLID étant la ségrégation d'interfaces.
+Appliquons ensuite le même procédé pour l'initialisation et la transition avec `start()` pour le dernier écran, la vue détail. Une particularité ici, est que la vue détail n'a pas à effectuer de transition vers une nouvelle vue.
 
+Encore une fois, on va appliquer le pattern de la délégation, avec un protocole qui permettra à `DetailCoordinator` d'être plus facilement testable, du fait qu'il est indépendant du `ViewController`. On respecte encore une fois le 4ème principe du SOLID (ségrégation d'interface) et 5ème principe du SOLID (l'inversion de dépendances).
+```swift
+// On respecte les 4ème et 5ème principe du SOLID de la ségrégation d'interface et de l'inversion de dépendances
+protocol DetailViewControllerDelegate: AnyObject {
+    func backToListView()
+}
+```
+
+Ci-dessous la classe `DetailCoordinator`, adoptant les 3 protocoles (`Coordinator`, `ParentCoordinator` et `DetailViewControllerDelegate`)
 ```swift
 import Foundation
 import UIKit
 
-final class DetailCoordinator: Coordinator {
-    weak var parentCoordinator: ParentCoordinator?
-    var navigationController: UINavigationController
+final class DetailCoordinator: Coordinator, ParentCoordinator {
+    // Attention à la rétention de cycle, le sous-flux ne doit pas retenir la référence avec le parent.
+    weak var parentCoordinator: Coordinator?
+    
+    private(set) var navigationController: UINavigationController
     var childCoordinators = [Coordinator]()
     let viewModel: PhoneViewModel
     
@@ -468,35 +526,46 @@ final class DetailCoordinator: Coordinator {
         print("[DetailCoordinator] Instanciation de la vue détail")
         let detailViewController = DetailViewController.instantiate(storyboardName: "Main") ?? DetailViewController()
         
+        // Ajout du lien vers le parent avec self, attention à la rétention de cycle
         detailViewController.configure(with: viewModel)
         detailViewController.coordinator = self
-        print("DetailViewController prêt.")
+        
+        print("[DetailCoordinator] DetailViewController prêt.")
         self.navigationController.pushViewController(detailViewController, animated: true)
     }
-    
+}
+
+extension DetailCoordinator: DetailViewControllerDelegate {
     func backToListView() {
         // Nettoyage du coordinator enfant
+        print("[DetailCoordinator] Retour à l'écran liste: Suppression du coordinator.")
         parentCoordinator?.removeChildCoordinator(childCoordinator: self)
         print(navigationController.viewControllers)
     }
 }
 ```
 
-Voici comment s'implémente `DetailViewController`
+Voici comment s'implémente `DetailViewController`. On n'oublie pas que c'est comme avec `ListViewController` et qu'il faut faire attention à la rétention de cycle et aussi à la gestion de la transition des vues.
+
 ```swift
 final class DetailViewController: UIViewController, Storyboarded {
     private var viewModel: PhoneViewModel?
     
     // Il faut que le ViewController puisse communiquer avec le Coordinator pour les différentes transitions de navigation.
-    var coordinator: DetailCoordinator?
+    // Attention à la rétention de cycle, ici: DetailCoordinator -> UINavigationController -> DetailViewController -> DetailCoordinator
+    weak var coordinator: DetailViewControllerDelegate?
     ...
     override func viewDidLoad() {
         super.viewDidLoad()
         setViews()
     }
     
+    // ATTENTION: Cela se déclenche aussi bien lorsque l'écran est détruit que lorsque qu'il y a un écran qui va aller au-dessus de celui-ci.
     override func viewWillDisappear(_ animated: Bool) {
-        coordinator?.backToListView()
+        // On s'assure qu'on fait bien un retour
+        if isMovingFromParent {
+            coordinator?.backToListView()
+        }
     }
     
     func configure(with viewModel: PhoneViewModel) {
@@ -520,14 +589,14 @@ Le `Coordinator` est un pattern qui organise la logique de flux de navigation en
 
 L'objectif principal du `Coordinator` est de rendre le code plus modulaire et plus facilement testable en réduisant la dépendance entre les différents composants de l'application. Il permet également de réduire la complexité de l'architecture de l'application en divisant les responsabilités de chaque composant.
 
-Le `Coordinator` se met en place avec une classe contenant des méthodes pour afficher le premier écran (depuis `AppDelegate`), naviguer d'un écran à un autre, et des attributs pour gérer les références entre les différents coordinators (étant des sous-flux). Le principe de communication entre la vue et le `Coordinator` se fait soit directement avec une référence entre `Coordinator` et le `ViewController` soit avec la délégation (`delegate`), qui peut être utile par exemple pour faire passer des données à une précédente vue.
+Le `Coordinator` se met en place avec une classe contenant des méthodes pour afficher le premier écran (depuis `AppDelegate`), naviguer d'un écran à un autre, et des attributs pour gérer les références entre les différents coordinators (étant des sous-flux). Le principe de communication entre la vue et le `Coordinator` se fait idéalement avec la délégation (`delegate`) afin de bien respecter le 4ème et 5ème principe du SOLID, qui va permettre par exemple de faire passer des données à une précédente vue mais aussi pour faciliter la testabilité et la maintenance du fait que la vue est découplée du `Coordinator`.
 
 On en retiendra que le `Coordinator` est un pattern de flux:
 - Qui gère la navigation dans des flux et sous-flux, en allégeant la vue de cette responsabilité.
 - Qui permet le découplage des différents écrans afin de faire une navigation sur mesure que ce soit lors des intéractions sur chaque écran, ou bien lors de l'ouverture de l'application avec des deeplinks (liens profonds).
 - Qui facilite la testabilité des composants de l'application, chaque flux de navigation pouvant être testé indépendamment, par exemple pour vérifier que les instances sont bien retournées ou bien détruites depuis des tests unitaires.
 
-Mais aussi un pattern difficile à apprendre, à comprendre et à appliquer par soi-même. C'est un pattern qui m'a donné énormément de fil à retordre.
+Mais aussi un pattern difficile à apprendre, à comprendre et à appliquer par soi-même. C'est un pattern qui m'a donné énormément de fil à retordre. Il faut faire très attention à la gestion des références pouvant facilement causer des rétentions de cycles résultant de fuites mémoire (`memory leak`).
 
 Voilà, en espérant que ce repo vous offrira tous les éclaircissements nécessaires pour maîtriser ce design pattern et que vous puissiez intégrer plus facilement un projet exploitant ce pattern, aussi bien avec MVVM (MVVM-C) ou bien MVP (MVP+C), ou encore ces 2 derniers imbriqués dans une Clean Architecture. 
 

@@ -9,11 +9,12 @@ import UIKit
 
 final class ListViewController: UIViewController, Storyboarded {
     
-    @IBOutlet weak var searchBar: UISearchBar!
-    @IBOutlet weak var tableView: UITableView!
+    @IBOutlet private weak var searchBar: UISearchBar!
+    @IBOutlet private weak var tableView: UITableView!
     
     // Il faut que le ViewController puisse communiquer avec le Coordinator pour les différentes transitions de navigation.
-    var coordinator: ListCoordinator?
+    // Attention à la rétention de cycle, ici: ListCoordinator -> UINavigationController -> ListViewController -> ListCoordinator
+    weak var coordinator: ListViewControllerDelegate?
     var viewModel: ListViewModel?
     private var iPhoneViewModels = [PhoneViewModel]()
     
@@ -37,8 +38,12 @@ final class ListViewController: UIViewController, Storyboarded {
         viewModel?.fetchiPhonesData()
     }
     
+    // ATTENTION: Cela se déclenche aussi bien lorsque l'écran est détruit que lorsque qu'il y a un écran qui va aller au-dessus de celui-ci.
     override func viewWillDisappear(_ animated: Bool) {
-        coordinator?.backToHomeView()
+        // On s'assure qu'on fait bien un retour
+        if isMovingFromParent {
+            coordinator?.backToHomeView()
+        }
     }
     
     func setTableView() {

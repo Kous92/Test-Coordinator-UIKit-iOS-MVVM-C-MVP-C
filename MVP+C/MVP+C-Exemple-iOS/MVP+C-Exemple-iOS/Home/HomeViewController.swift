@@ -11,7 +11,8 @@ import UIKit
 final class HomeViewController: UIViewController, Storyboarded {
     
     // Il faut que le ViewController puisse communiquer avec le Coordinator pour les différentes transitions de navigation.
-    var coordinator: AppCoordinator?
+    // Attention à la rétention de cycle, ici: HomeCoordinator -> UINavigationController -> HomeViewController -> HomeCoordinator
+    weak var coordinator: HomeViewControllerDelegate?
     
     init() {
         super.init(nibName: nil, bundle: nil)
@@ -28,7 +29,7 @@ final class HomeViewController: UIViewController, Storyboarded {
         navigationItem.backBarButtonItem = backBarButton
     }
 
-    @IBAction func goToListScreen(_ sender: Any) {
+    @IBAction private func goToListScreen(_ sender: Any) {
         coordinator?.goToListView()
     }
 }

@@ -29,7 +29,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window?.windowScene = windowScene
         
         // Si on définit le point d'entrée de manière programmatique, la fenêtre doit avoir une vue racine définie, ici le NavigationController où des vues y seront poussées.
-        window?.rootViewController = coordinator?.navigationController
+        window?.rootViewController = navigationController
         window?.makeKeyAndVisible()
     }
 
@@ -60,7 +60,4 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // Use this method to save data, release shared resources, and store enough scene-specific state information
         // to restore the scene back to its current state.
     }
-
-
 }
-

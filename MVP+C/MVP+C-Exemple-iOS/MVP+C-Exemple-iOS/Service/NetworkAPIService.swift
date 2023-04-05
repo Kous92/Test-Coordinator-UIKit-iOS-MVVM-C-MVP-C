@@ -42,12 +42,10 @@ final class NetworkAPIService: APIService {
         do {
             let output = try decoder.decode(PhoneResponse.self, from: data)
             iPhoneData = output.phones
-            // iPhoneData.append(try decoder.decode(Phone.self, from: data))
         } catch {
             throw APIError.errorMessage("Erreur lors du décodage.")
         }
         
-        // print(iPhoneData)
         return iPhoneData
         
     }

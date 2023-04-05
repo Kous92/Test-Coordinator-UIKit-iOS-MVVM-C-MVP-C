@@ -13,7 +13,8 @@ final class ListViewController: UIViewController, Storyboarded {
     @IBOutlet weak var searchBar: UISearchBar!
     
     // Il faut que le ViewController puisse communiquer avec le Coordinator pour les différentes transitions de navigation.
-    var coordinator: ListCoordinator?
+    // Attention à la rétention de cycle, ici: ListCoordinator -> UINavigationController -> ListViewController -> ListCoordinator
+    weak var coordinator: ListViewControllerDelegate?
     var presenter: ListPresenter?
     private var iPhoneViewModels = [PhoneViewModel]()
     
@@ -22,7 +23,7 @@ final class ListViewController: UIViewController, Storyboarded {
     }
     
     required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
+        super.init(coder: coder)
     }
     
     override func viewDidLoad() {
@@ -36,8 +37,12 @@ final class ListViewController: UIViewController, Storyboarded {
         presenter?.fetchiPhonesData()
     }
     
+    // ATTENTION: Cela se déclenche aussi bien lorsque l'écran est détruit que lorsque qu'il y a un écran qui va aller au-dessus de celui-ci.
     override func viewWillDisappear(_ animated: Bool) {
-        coordinator?.backToHomeView()
+        // On s'assure qu'on fait bien un retour
+        if isMovingFromParent {
+            coordinator?.backToHomeView()
+        }
     }
     
     func setTableView() {
@@ -55,13 +60,7 @@ final class ListViewController: UIViewController, Storyboarded {
     }
     
     func displayAlertErrorMessage(with errorMessage: String) {
-        let alert = UIAlertController(title: "Erreur", message: errorMessage, preferredStyle: .alert)
-        
-        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: { _ in
-            print("OK")
-        }))
-        
-        present(alert, animated: true, completion: nil)
+        coordinator?.displayAlertErrorMessage(with: errorMessage)
     }
 }
 

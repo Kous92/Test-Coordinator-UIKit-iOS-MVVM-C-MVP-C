@@ -68,7 +68,7 @@ final class ListPresenter {
     }
     
     // @MainActor remplace DispatchQueue.main.async, mais doit être appelé avec await dans un bloc async.
-    // Le ViewModel va ici dire à la vue de se mettre à jour, par le biais des closures (data binding)
+    // Le Presenter va ici dire à la vue de se mettre à jour, par le biais des closures (data binding)
     @MainActor private func updateView() {
         listViewController?.didLoadData(with: filteredViewModels)
     }

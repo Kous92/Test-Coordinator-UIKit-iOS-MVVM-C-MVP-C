@@ -11,6 +11,7 @@ final class DetailViewController: UIViewController, Storyboarded {
     private var viewModel: PhoneViewModel?
     
     // Il faut que le ViewController puisse communiquer avec le Coordinator pour les différentes transitions de navigation.
+    // Attention à la rétention de cycle, ici: DetailCoordinator -> UINavigationController -> DetailViewController -> DetailCoordinator
     weak var coordinator: DetailCoordinator?
     
     @IBOutlet weak var iPhoneNameLabel: UILabel!
@@ -25,7 +26,7 @@ final class DetailViewController: UIViewController, Storyboarded {
     }
     
     required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
+        super.init(coder: coder)
     }
     
     override func viewDidLoad() {
@@ -33,8 +34,12 @@ final class DetailViewController: UIViewController, Storyboarded {
         setViews()
     }
     
+    // ATTENTION: Cela se déclenche aussi bien lorsque l'écran est détruit que lorsque qu'il y a un écran qui va aller au-dessus de celui-ci.
     override func viewWillDisappear(_ animated: Bool) {
-        coordinator?.backToListView()
+        // On s'assure qu'on fait bien un retour
+        if isMovingFromParent {
+            coordinator?.backToListView()
+        }
     }
     
     func configure(with viewModel: PhoneViewModel) {
